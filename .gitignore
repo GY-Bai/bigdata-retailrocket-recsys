@@ -1,0 +1,41 @@
+# ============================================================================
+# White-list Mode .gitignore
+# Strategy: Ignore everything, then explicitly allow specific files/folders
+# ============================================================================
+
+# Step 1: Ignore everything
+*
+
+# Step 2: Allow specific files in root directory
+!README.md
+!prepare_training_data_pyspark.py
+!.gitignore
+
+# Step 3: Allow slides/ directory and all its contents
+!slides/
+!slides/**
+
+# Step 4: Allow data/ directory but ignore most contents
+!data/
+# Ignore everything in data/ first
+data/*
+
+# Then allow only processed/ subdirectory
+!data/processed/
+# Ignore everything in processed/ first
+data/processed/*
+
+# Then allow only the two specific parquet files
+!data/processed/X_train_spark.parquet/
+!data/processed/X_train_spark.parquet/**
+!data/processed/X_valid_spark.parquet/
+!data/processed/X_valid_spark.parquet/**
+
+# ============================================================================
+# Explanation:
+# - '*' ignores all files and directories
+# - '!filename' negates the ignore rule (whitelist)
+# - '!folder/' allows Git to track the folder itself
+# - '!folder/**' allows Git to track all contents recursively
+# ============================================================================
+
