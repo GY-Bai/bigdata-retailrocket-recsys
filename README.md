@@ -7,7 +7,6 @@
 - Gu, Libo
 - Huang, Zijia
 
-**Repository**: [git@github.com:GY-Bai/bigdata-retailrocket-recsys.git](https://github.com/GY-Bai/bigdata-retailrocket-recsys)
 
 ---
 
@@ -298,5 +297,5 @@ Repository: [bigdata-retailrocket-recsys](https://github.com/GY-Bai/bigdata-reta
 
 **Last Updated**: December 2025  
 **Course**: FA 25 6513-C Big Data  
-**Institution**: [Your University Name]
+**Institution**: NYU
 
