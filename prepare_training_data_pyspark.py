@@ -23,6 +23,8 @@ from pyspark.sql import SparkSession, Window
 from pyspark.sql import functions as F
 from pyspark.sql.functions import col, lag, unix_timestamp, when, concat, lit
 import numpy as np
+import pandas as pd
+from gensim.models import Word2Vec
 
 # 配置
 DATA_DIR = Path("data/raw")
@@ -383,6 +385,55 @@ print("✓ 候选集构建完成")
 print()
 
 # ============================================================================
+# STEP 5.5: 训练Category Embeddings (Word2Vec)
+# ============================================================================
+print("STEP 5.5: 训练Category Embeddings (Word2Vec)...")
+
+# 提取每个session的category序列（用于训练Word2Vec）
+cat_seqs_spark = events_df.filter(col("ts") < F.lit(TRAIN_END).cast("timestamp")) \
+    .join(item_category, "item_id", "inner") \
+    .select("session_id", "ts", "category_id") \
+    .orderBy("session_id", "ts")
+
+cat_seqs_spark = cat_seqs_spark.groupBy("session_id").agg(
+    F.collect_list("category_id").alias("cat_sequence")
+)
+
+# 转换为Pandas以使用gensim
+cat_seqs_pd = cat_seqs_spark.toPandas()
+
+# 准备训练数据（转换为字符串列表）
+sequences = [[str(cat) for cat in seq if cat is not None] for seq in cat_seqs_pd['cat_sequence']]
+sequences = [seq for seq in sequences if len(seq) >= 2]  # 过滤短序列
+
+print(f"  提取了 {len(sequences):,} 个category序列用于训练")
+
+# 训练Word2Vec模型
+w2v_model = Word2Vec(
+    sentences=sequences,
+    vector_size=16,
+    window=5,
+    min_count=3,
+    workers=4,
+    sg=1,
+    epochs=10,
+    seed=42
+)
+
+print(f"  训练了 {len(w2v_model.wv)} 个category的embeddings")
+
+# 创建embedding查找字典
+cat_embeddings = {int(cat): w2v_model.wv[cat] for cat in w2v_model.wv.index_to_key}
+
+# 展示相似度检查
+sample_cat = list(cat_embeddings.keys())[0]
+similar = w2v_model.wv.most_similar(str(sample_cat), topn=5)
+print(f"  示例: Category {sample_cat} 最相似的类别: {[(int(c), round(s, 3)) for c, s in similar]}")
+
+print("✓ Word2Vec训练完成")
+print()
+
+# ============================================================================
 # STEP 6: 特征工程
 # ============================================================================
 print("STEP 6: 特征工程...")
@@ -542,8 +593,35 @@ def build_features_spark(atc_df, candidates_df, split_name, train_cutoff_str):
         when(col("base.true_category_id") == col("base.cand_category_id"), 1).otherwise(0).alias("y")
     )
     
+    # 先 count 行数（在添加 embeddings 之前）
     n_rows = features.count()
-    print(f"    {split_name}: {n_rows:,} 行特征")
+    
+    print(f"    {split_name}: {n_rows:,} 行基础特征")
+    print(f"    添加 16 维 category embeddings...")
+    
+    # 广播 embedding 字典以提高性能
+    emb_broadcast = spark.sparkContext.broadcast(cat_embeddings)
+    
+    # 定义 UDF 来获取 embedding 的某一维
+    def get_embedding_dim(cat_id, dim_idx):
+        emb_dict = emb_broadcast.value
+        if cat_id in emb_dict:
+            return float(emb_dict[cat_id][dim_idx])
+        else:
+            return 0.0
+    
+    # 注册 UDF
+    from pyspark.sql.types import FloatType
+    get_emb_udf = F.udf(get_embedding_dim, FloatType())
+    
+    # 逐个添加 embedding 维度
+    for dim in range(16):
+        features = features.withColumn(
+            f'cat_emb_{dim}',
+            get_emb_udf(col("category_id"), F.lit(dim))
+        )
+    
+    print(f"    {split_name}: {n_rows:,} 行 x {len(features.columns)} 列特征（含embeddings）")
     
     return features
 
@@ -599,12 +677,14 @@ print(f"  负样本: {valid_total - valid_pos:,} ({(valid_total-valid_pos)/valid
 print("\n特征列:")
 feature_cols = [c for c in X_train_spark.columns if c not in ['session_id', 'atc_ts', 'category_id', 'y']]
 print(f"  总特征数: {len(feature_cols)}")
+print(f"    - 基础特征: 18")
+print(f"    - Category Embeddings: 16")
 print(f"  特征列表: {', '.join(feature_cols)}")
 
 print("\n下一步:")
 print("  1. 运行 ecommerce_classifier_v2_2.py（从LINE 398开始）")
 print("  2. 读取 X_train_spark.parquet 和 X_valid_spark.parquet")
-print("  3. 添加类别嵌入特征（word2vec）")
+print("  3. 添加交互特征（cat_pop_x_user_hist, recency_x_cat_count 等5个）")
 print("  4. 训练LightGBM/XGBoost/CatBoost模型")
 
 print("\n" + "=" * 80)
