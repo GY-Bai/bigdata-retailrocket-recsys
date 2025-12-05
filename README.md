@@ -256,18 +256,36 @@ Prevents data leakage:
 
 ### Bai, Gengyuan (Lead Data Engineer)
 
+**Role**: Built the Native PySpark Pipeline, Distributed Sessionization, Multi-strategy Recall, and Embedding Generation.
+
+**Key Contributions**:
 - Designed and implemented the entire PySpark ETL pipeline
 - Developed distributed sessionization logic using Spark Window functions
 - Implemented 5 parallel candidate generation strategies
 - Built feature engineering framework (18 base features)
+- Generated Word2Vec category embeddings for downstream models
 - Optimized for point-in-time correctness and data leakage prevention
-- **Core Deliverable**: `prepare_training_data_pyspark.py` (614 lines)
+- **Core Deliverable**: `prepare_training_data_pyspark.py` (696 lines)
 
-### Gu, Libo & Huang, Zijia
+### Gu, Libo
 
-- Downstream modeling and evaluation
-- Hyperparameter tuning for LightGBM/XGBoost/CatBoost
-- Model performance analysis and visualization
+**Role**: Training LightGBM/XGBoost/CatBoost models.
+
+**Key Contributions**:
+- Implemented and optimized gradient-boosted tree models
+- Hyperparameter tuning for LightGBM, XGBoost, and CatBoost
+- Model performance comparison and selection
+- Feature importance analysis
+
+### Huang, Zijia
+
+**Role**: Visualization, Metric Evaluation, Business Insights.
+
+**Key Contributions**:
+- Created comprehensive data visualization and analysis
+- Developed evaluation metrics and performance benchmarks
+- Generated business insights from model predictions
+- Prepared presentation materials and documentation
 
 ---
 

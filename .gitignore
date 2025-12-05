@@ -9,6 +9,7 @@
 # Step 2: Allow specific files in root directory
 !README.md
 !prepare_training_data_pyspark.py
+!prepare_training_data_pyspark_en.ipynb
 !.gitignore
 
 # Step 3: Allow slides/ directory and all its contents
